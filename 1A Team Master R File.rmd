@@ -1,0 +1,278 @@
+#Assignment 1A - Data Exploration
+#IDS 572 | CRN 38886 | Fall 2021
+#Team - Giovanni Alvin Prasetya, Karishma Mulchandani, and Rajaram Ramesh
+
+#Libraries
+library(tidyverse)
+library(lubridate)
+library(pROC)
+library(broom)
+
+#Reading Data File
+lcdf <- read_csv('lcData100K.csv')
+
+#Q2(a)(i)
+```{r}
+#1 - Loans shown by loan status
+lcdf %>% group_by(loan_status) %>% summarise(nLoans=n())
+
+#2 - Loans shown by loan status as a percentage of total loans
+lcdf %>% group_by(loan_status) %>% summarise(nLoans=n()) %>% mutate(pct=nLoans/sum(nLoans) * 100)
+
+#3 - Loans shown by loan status and grade (table)
+table(lcdf$loan_status, lcdf$grade)
+
+#4 - Loans shown by loan status and grade as a proportion (table)
+LoanGrade <- table(lcdf$loan_status, lcdf$grade) 
+ppLoanGrade <- prop.table(LoanGrade) 
+ppLoanGrade <- ppLoanGrade*100
+ppLoanGrade
+
+#5 - Loans shown by loan status and grade as a proportion (barplot)
+barplot(ppLoanGrade,
+  main = "Loan Status by Grade", 
+  xlab = "Proportion of Loans",
+  ylab = "Grade",
+  col = c("red", "green"),
+  xlim = c(0,40), horiz = TRUE)
+box (lwd=2)
+
+#6 - Loans shown by loan status and sub-grade (table)
+table(lcdf$loan_status, lcdf$sub_grade)
+
+#7 - Loans shown by loan status and sub-grade as a proportion (table)
+
+ppLoanSubGrade <- table(lcdf$loan_status, lcdf$sub_grade) 
+ppLoanSubGrade <- prop.table(ppLoanSubGrade) 
+ppLoanSubGrade <- ppLoanSubGrade*100 
+ppLoanSubGrade
+
+#8 - Loans shown by loan status and sub-grade as a proportion (barplot)
+barplot(ppLoanSubGrade,
+  main = "Loan Status by Sub-grade", 
+  xlab = "Proportion of Loans",
+  ylab = "Subgrade",
+  col = c("red", "green"),
+  xlim = c(0,8), horiz = TRUE)
+box (lwd=2)
+
+```
+
+#Q2(a)(ii)
+```{r}
+#filter the Charged off and Fully paid
+lcdf %>% group_by(loan_status, grade) %>% tally()
+view(lcdata1)
+lcdf1<-lcdata%>%select("loan_status","grade","sub_grade","loan_amnt")
+lcdf2<- lcdata%>%select("loan_status","grade","sub_grade","loan_amnt","int_rate")
+
+#using table
+table(lcdata$loan_status, lcdata$grade)
+
+#group by amount and loan
+lcdf1 %>% group_by(grade) %>% summarise(sum(loan_amnt))
+view(lcdf1)
+
+#convert the lcdata1 list to dataframe
+dataFrame <- as.data.frame(lcdf1)
+
+#calculate loan amount by grades
+a<-with(dataFrame, sum(loan_amnt[grade == 'A']))
+a
+b<-with(dataFrame, sum(loan_amnt[grade == 'B']))
+b
+c<-with(dataFrame, sum(loan_amnt[grade == 'C']))
+c
+d<-with(dataFrame, sum(loan_amnt[grade == 'D']))
+d
+e<-with(dataFrame, sum(loan_amnt[grade == 'E']))
+e
+f<-with(dataFrame, sum(loan_amnt[grade == 'F']))
+f
+g<-with(dataFrame, sum(loan_amnt[grade == 'G']))
+g
+
+#Variance of interest rate by grade and sub grade by average
+lcdf2 %>% group_by(grade) %>% summarise(mean(int_rate))
+lcdf2 %>% group_by(sub_grade) %>% summarise(mean(int_rate))
+
+#Variance of average, std dev, min/max of interest rate by grade and subgrade
+lcdf2 %>% group_by(grade) %>% summarise(averageInterest=mean(int_rate),stdevInterest=sd(int_rate), minInterest=min(int_rate), maxInterest=max(int_rate))
+lcdf2 %>% group_by(sub_grade) %>% summarise(averageInterest=mean(int_rate),stdevInterest=sd(int_rate), minInterest=min(int_rate), maxInterest=max(int_rate))
+
+#Plot the variance of loan amount by grade
+ggplot(lcdf2, aes( x = loan_amnt)) + geom_histogram(aes(fill=grade))
+
+#plot the variance of average interest rate base on grade and sub grade
+ggplot(lcdf2, aes( x = int_rate)) + geom_histogram(aes(fill=grade))
+ggplot(lcdf2, aes( x = int_rate)) + geom_histogram(aes(fill=sub_grade))
+
+```
+
+#Q2(a)(iii)
+```{r}
+getwd()
+select('lcData100K.csv',c('loan_status'))
+lcdf<-LoanData%>%select("loan_status","loan_amnt","grade","int_rate","last_pymnt_d","issue_d",
+        "total_pymnt","funded_amnt","annRet") 
+#%>%filter(loan_status=="Fully Paid")
+view(lcdf)
+lcdf$last_pymnt_d<-paste(lcdf$last_pymnt_d, "-01", sep = "")
+#view(lcdf)
+install.packages("lubridate")
+library(lubridate)
+lcdf$last_pymnt_d<-parse_date_time(lcdf$last_pymnt_d,"myd")
+#head(lcdf[, c("last_pymnt_d", "issue_d")])
+
+x<- as.duration(lcdf$issue_d  %--% lcdf$last_pymnt_d)/dyears(1)
+view(lcdf)
+
+#lcdf%>%filter(loan_status=="Fully Paid")
+
+lcdf$actualTerm <- ifelse(lcdf$loan_status=="Fully Paid", 
+                          as.duration(lcdf$issue_d  %--% lcdf$last_pymnt_d)/dyears(1), 3)
+lcdf$actualReturn <- ifelse(lcdf$actualTerm>0,
+                            ((lcdf$total_pymnt -lcdf$funded_amnt)/lcdf$funded_amnt)*(1/lcdf$actualTerm)*100, 0)
+
+view(lcdf)
+
+#lcdf %>% select(loan_status, int_rate, funded_amnt, total_pymnt, annRet, actualTerm, actualReturn) %>%  head()
+#lcdf$testCol <- LoanData$annual_inc
+
+boxplot(lcdf$actualTerm ~ lcdf$grade)
+
+```
+
+#Q2(a)(iv)
+```{r}
+#filter the Charged off and Fully paid
+lcdf %>% group_by(loan_status, grade) %>% tally()
+view(lcdata1)
+lcdf1<-lcdata%>%select("loan_status","grade","sub_grade","loan_amnt")
+lcdf2<- lcdata%>%select("loan_status","grade","sub_grade","loan_amnt","int_rate")
+
+#using table
+table(lcdata$loan_status, lcdata$grade)
+
+#group by amount and loan
+lcdf1 %>% group_by(grade) %>% summarise(sum(loan_amnt))
+view(lcdf1)
+
+#Calculate return from loan that labelled "charge off"
+lcdf %>% group_by(loan_status) %>% summarise(sum(loan_status == "Charged Off"))
+
+#expected return of loan amount from the int_rate
+lcdf %>% select(loan_status, int_rate, funded_amnt, total_pymnt, grade) %>% head()
+
+#Calculate annualized percentage return
+lcdf$annRet <- ((lcdata$total_pymnt -lcdata$funded_amnt)/lcdata$funded_amnt)*(12/36)*100
+
+#Summarise annual percentage return of "charged off" according to grade
+lcdf %>% group_by(grade) %>% summarise(nLoans=n(), defaults=sum(loan_status=="Charged Off"), 
+avgInterest= mean(int_rate), stdInterest=sd(int_rate), avgLoanAMt=mean(loan_amnt), avgPmnt=mean(total_pymnt), 
+avgRet=mean(annRet), stdRet=sd(annRet), minRet=min(annRet), maxRet=max(annRet))
+
+#Summarise annual percentage return of "charged off" according to sub grade
+lcdf %>% group_by(sub_grade) %>% summarise(nLoans=n(), defaults=sum(loan_status=="Charged Off"), 
+avgInterest= mean(int_rate), stdInterest=sd(int_rate), avgLoanAMt=mean(loan_amnt), avgPmnt=mean(total_pymnt), 
+avgRet=mean(annRet), stdRet=sd(annRet), minRet=min(annRet), maxRet=max(annRet)) %>% view()
+
+#Where do the negative numbers for minRet come from?
+lcdf %>% select(loan_status, int_rate, funded_amnt, total_pymnt, annRet) %>% filter(annRet < 0) %>% head()
+
+#are these all from 'Charged Off' loans?
+lcdf %>% select(loan_status, int_rate, funded_amnt, total_pymnt, annRet) %>% filter(annRet < 0) %>% count(loan_status)
+
+#Calculate the annual return percentage
+lcdf$last_pymnt_d<-paste(lcdata$last_pymnt_d, "-01", sep = "")
+lcdf$last_pymnt_d<-parse_date_time(lcdata$last_pymnt_d,  "myd")
+lcdf$actualTerm <- ifelse(lcdata$loan_status=="Fully Paid", as.duration(lcdata$issue_d  %--% lcdata$last_pymnt_d)/dyears(1), 3)
+lcdf$actualReturn <- ifelse(lcdata$actualTerm>0, ((lcdata$total_pymnt-lcdata$funded_amnt)/lcdata$funded_amnt)*(1/lcdata$actualTerm)*100, 0)
+lcdf %>% select(loan_status, int_rate, funded_amnt, total_pymnt, annRet, actualTerm, actualReturn, sub_grade)%>% filter(loan_status == "Charged Off") %>% view()
+
+```
+
+#Q2(a)(v)
+```{r}
+lcdf$purpose <- LoanData$purpose
+view(lcdf)
+
+# Does default rate, int-rate, etc vary by loan purpose
+lcdf %>% group_by(purpose) %>% tally()
+lcdf %>% group_by(purpose) %>% summarise(nLoans=n(), defaults=sum(loan_status=="Charged Off"), defaultRate=defaults/nLoans, avgIntRate=mean(int_rate),  avgLoanAmt=mean(loan_amnt),  avgActRet = mean(actualReturn), avgActTerm=mean(actualTerm))
+
+#Does loan-grade vary by purpose?
+table(lcdf$purpose, lcdf$grade)
+
+```
+
+#Q2(a)(vi)
+```{r}
+#1 - Converting emp_length to factor, arranged in ascending number of years
+lcdf$emp_length <- factor(lcdf$emp_length, levels = c("< 1 year","1 year","2 years","3 years","4 years","5 years","6 years","7 years","8 years","9 years","10+ years","n/a"))
+
+#2 - Loans shown by employment length
+lcdf %>% group_by(emp_length) %>% tally()
+
+#3 - Loans shown by employment length and loan status
+table(lcdf$loan_status, lcdf$emp_length)
+
+#4 - Loans shown as a percentage of Charged Off loans for each level of employment length
+cc = table(lcdf$loan_status, lcdf$emp_length)
+(cc[1,]/(cc[1,] + cc[2,]))*100
+
+#5 - Loans shown by employment length and loan grade
+table(lcdf$grade, lcdf$emp_length)
+
+#6 - Loans shown by employment length and loan purpose
+table(lcdf$purpose, lcdf$emp_length)
+
+#7 - Loans shown by employment length and home ownership status
+table(lcdf$home_ownership, lcdf$emp_length)
+
+```
+
+#Q2(c)
+```{r}
+#1 - How many variables are there in the data file?
+dim(lcdf)
+
+#2 - Drop variables with all empty values
+lcdf <- lcdf %>% select_if(function(x){!all(is.na(x))})
+
+#3 - How many variables remain? 
+dim(lcdf)
+
+#4 - Initially we had 145 Variables, after running the code we kept 108 variables 
+
+#5 - Missing value proportions showing only those columns where there are missing values 
+colMeans(is.na(lcdf))[colMeans(is.na(lcdf))>0]
+
+#6 - Missing value percentages showing only those columns where there are missing values 
+colMeans(is.na(lcdf))[colMeans(is.na(lcdf))>0]*100
+
+```
+
+#Q3
+```{r}
+#Drop some columns that would not useful and those that would cause a leakage
+lcdf <- lcdf %>% select(-c(funded_amnt_inv, term, emp_title, pymnt_plan, title, zip_code, addr_state, out_prncp, out_prncp_inv, total_pymnt_inv, total_rec_prncp, total_rec_int,total_rec_late_fee,recoveries, collection_recovery_fee, last_credit_pull_d, policy_code, disbursement_method, debt_settlement_flag, hardship_flag, hardship_dpd, settlement_term, application_type))
+
+#To drop other variables,
+#varsToRemove <- c("last_pymnt_d", "last_pymnt_amnt","annRet")
+#lcdf <- lcdf %>% select(-varsToRemove)
+
+```
+
+#Q4
+```{r}
+#deploy aucAll variable considering both numeric and factor variable
+aucAll<- sapply(lcdf %>% mutate_if(is.factor, as.numeric) %>% select_if(is.numeric), auc, response=lcdf$loan_status) 
+
+#determine variable with auc > 0.5 and using tidy from broom package
+aucAll[aucAll>0.5]
+tidy(aucAll) %>% arrange(desc(aucAll))
+tidy(aucAll[aucAll > 0.5]) %>% view()
+
+```
+
