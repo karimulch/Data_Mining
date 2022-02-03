@@ -1,7 +1,3 @@
-#Assignment 1A - Data Exploration
-#IDS 572 | CRN 38886 | Fall 2021
-#Team - Giovanni Alvin Prasetya, Karishma Mulchandani, and Rajaram Ramesh
-
 #Libraries
 library(tidyverse)
 library(lubridate)
