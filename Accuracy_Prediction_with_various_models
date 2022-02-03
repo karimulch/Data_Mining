@@ -1,9 +1,3 @@
----
-title: "IDS 572 Assignment 2 - Models for Investment Decisions in Lending Club Loans"
-author: "Giovanni Alvin Prasetya, Karishma Mulchandani, Rajaram Ramesh"
-output: html_document
----
-
 Required Libraries
 ```{r message=FALSE, warning=FALSE, include=FALSE}
 library(tidyverse)
